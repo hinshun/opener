@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-echo "${@}" | nc -U "$HOME/.opener.sock"
+echo "open:${@}" | nc -U "$HOME/.opener.sock"

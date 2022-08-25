@@ -9,18 +9,24 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 	"sync"
 	"syscall"
 
+	"github.com/atotto/clipboard"
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
 
-var version string
-var commit string
-var date string
+var (
+	version string
+	commit  string
+	date    string
+
+	schemePattern = regexp.MustCompile(`^(open|clipboard):`)
+)
 
 type OpenerOptions struct {
 	Network string `yaml:"network"`
@@ -139,11 +145,15 @@ var openURL = func(line string) (string, error) {
 	return buf.String(), err
 }
 
+func writeClipboard(line string) error {
+	return clipboard.WriteAll(line)
+}
+
 func handleConnection(conn net.Conn, errOut io.Writer) {
 	defer conn.Close()
 
-	line, err := bufio.NewReader(conn).ReadString('\n')
-	line = strings.TrimRight(line, "\n")
+	line, err := bufio.NewReader(conn).ReadString('\u0000')
+	line = strings.TrimRight(line, "\u0000")
 	fmt.Fprintf(errOut, "received %q\n", line)
 	if err != nil {
 		if err != io.EOF {
@@ -152,14 +162,28 @@ func handleConnection(conn net.Conn, errOut io.Writer) {
 		}
 	}
 
-	logs, err := openURL(line)
-
-	if logs != "" {
-		fmt.Fprint(errOut, logs)
+	var logs string
+	scheme := schemePattern.FindString(line)
+	line = strings.TrimPrefix(line, scheme)
+	switch scheme {
+	case "open:":
+		logs, err = openURL(line)
+		if logs != "" {
+			fmt.Fprint(errOut, logs)
+		}
+	case "clipboard:":
+		err = writeClipboard(line)
+	default:
+		fmt.Fprintf(errOut, "unrecognized scheme: '%s'\n", scheme)
+		return
 	}
 
 	if err != nil {
-		fmt.Fprintf(errOut, "failed to open %q: %v\n", line, err)
+		fmt.Fprintf(errOut, "failed to handle %q: %v\n", line, err)
+
+		if len(logs) == 0 {
+			return
+		}
 
 		// Send back the logs from `open` to the client over e.g. the unix domain socket, so that
 		// `open` on the client machine would work more like that on the server.

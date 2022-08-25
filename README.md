@@ -85,7 +85,7 @@ $ sudo systemctl restart ssh
 If set up correctly, the following command in a remote environment will send the URL through opener and open the URL in your local web browser.
 
 ```
-$ open https://www.google.com/
+$ open open:https://www.google.com/
 ```
 
 ## Configuration
@@ -140,7 +140,7 @@ Send a URL to the opener daemon from inside a container:
 
 ```
 $ docker run --rm -it busybox /bin/sh
-# echo https://www.google.com/ | nc host.docker.internal 9999
+# echo open:https://www.google.com/ | nc host.docker.internal 9999
 ```
 
 The following script is useful as a fake `open` command.

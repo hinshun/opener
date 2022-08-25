@@ -68,7 +68,7 @@ func TestHandleConnection(t *testing.T) {
 		{
 			"Say nothing when successful",
 			func(line string) (string, error) {
-				return "pong\n", nil
+				return "open:pong\u0000", nil
 			},
 			"",
 			io.EOF,
@@ -76,9 +76,9 @@ func TestHandleConnection(t *testing.T) {
 		{
 			"Sending back the logs when failure",
 			func(line string) (string, error) {
-				return "pong\n", errors.New("exit status 1")
+				return "open:pong\u0000", errors.New("exit status 1")
 			},
-			"pong\n",
+			"open:pong\u0000",
 			nil,
 		},
 	}
@@ -101,7 +101,7 @@ func TestHandleConnection(t *testing.T) {
 			}
 			defer client.Close()
 
-			if _, err := client.Write([]byte("ping\n")); err != nil {
+			if _, err := client.Write([]byte("open:ping\u0000")); err != nil {
 				t.Fatal(err)
 			}
 
